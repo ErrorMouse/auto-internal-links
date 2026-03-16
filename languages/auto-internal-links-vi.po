@@ -1,0 +1,98 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Auto Internal Links 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-16 23:30+0700\n"
+"PO-Revision-Date: 2026-03-16 23:40+0700\n"
+"Last-Translator: Err <nmtnguyen56>\n"
+"Language-Team: Err <nmtnguyen56@gmail.com>\n"
+"Language: vi\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Poedit 3.9\n"
+
+msgid "Auto Links Statistics"
+msgstr "Thống kê Auto Links"
+
+msgid "Auto Internal Links Statistics"
+msgstr "Thống kê Auto Internal Links"
+
+msgid "Auto Links"
+msgstr "Auto Links"
+
+msgid "Statistics"
+msgstr "Thống kê"
+
+msgid "Settings"
+msgstr "Cài đặt"
+
+msgid "General Settings"
+msgstr "Cài đặt chung"
+
+msgid "Apply to post types"
+msgstr "Áp dụng cho loại nội dung"
+
+msgid "Exclude posts (ID)"
+msgstr "Loại trừ bài đăng (ID)"
+
+msgid "Minimum title length"
+msgstr "Chiều dài tiêu đề tối thiểu"
+
+msgid "Case sensitive"
+msgstr "Phân biệt chữ hoa/thường"
+
+msgid "Enter post IDs, separated by commas (e.g., 1, 2, 3)."
+msgstr "Nhập ID các bài viết, cách nhau bởi dấu phẩy (ví dụ: 1, 2, 3)."
+
+msgid "characters"
+msgstr "ký tự"
+
+msgid "Shorter titles will not be used as keywords."
+msgstr "Tiêu đề ngắn hơn sẽ không được dùng làm từ khóa."
+
+msgid "Enable to only add links when the case exactly matches the title."
+msgstr "Kích hoạt để chỉ gắn link khi chữ hoa/thường khớp chính xác với tiêu đề."
+
+msgid "Donate to support this plugin"
+msgstr "Ủng hộ để phát triển plugin này"
+
+msgid "Donate"
+msgstr "Donate"
+
+msgid "Auto Internal Links Settings"
+msgstr "Cài đặt Auto Internal Links"
+
+msgid "Configure options for automatically adding internal links."
+msgstr "Cấu hình tùy chọn tự động gắn link nội bộ."
+
+msgid "Refresh Data"
+msgstr "Làm mới dữ liệu"
+
+msgid "The statistics table lists the Titles (Keywords) that have been automatically linked to other posts. The data is cached, please click \"Refresh Data\" if you have just written a new post."
+msgstr "Bảng thống kê liệt kê các Tiêu đề (Từ khóa) đã được tự động gắn link vào các bài viết khác. Dữ liệu được lưu cache, vui lòng click \"Làm mới dữ liệu\" nếu bạn vừa viết bài mới."
+
+msgid "Title / Keyword (Linked)"
+msgstr "Tiêu đề / Từ khóa (Được nhận link)"
+
+msgid "Number of linked posts"
+msgstr "Số bài viết gắn link"
+
+msgid "No internal link statistics data available yet."
+msgstr "Chưa có dữ liệu thống kê liên kết nội bộ nào."
+
+msgid "links"
+msgstr "links"
+
+msgid "Posts containing the keyword:"
+msgstr "Các bài viết chứa từ khóa:"
+
+msgid "Post Title (Where link is placed)"
+msgstr "Tiêu đề bài viết (Nơi đặt link)"
+
+msgid "Action"
+msgstr "Hành động"
+
+msgid "Automatically find keywords matching post titles and add internal links."
+msgstr "Tự động tìm các từ khóa phù hợp với tiêu đề bài viết và thêm liên kết nội bộ."

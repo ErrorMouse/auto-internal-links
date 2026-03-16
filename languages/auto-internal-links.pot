@@ -1,0 +1,96 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Auto Internal Links 1.0.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-03-16 23:30+0700\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Auto Links Statistics"
+msgstr ""
+
+msgid "Auto Internal Links Statistics"
+msgstr ""
+
+msgid "Auto Links"
+msgstr ""
+
+msgid "Statistics"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "General Settings"
+msgstr ""
+
+msgid "Apply to post types"
+msgstr ""
+
+msgid "Exclude posts (ID)"
+msgstr ""
+
+msgid "Minimum title length"
+msgstr ""
+
+msgid "Case sensitive"
+msgstr ""
+
+msgid "Enter post IDs, separated by commas (e.g., 1, 2, 3)."
+msgstr ""
+
+msgid "characters"
+msgstr ""
+
+msgid "Shorter titles will not be used as keywords."
+msgstr ""
+
+msgid "Enable to only add links when the case exactly matches the title."
+msgstr ""
+
+msgid "Donate to support this plugin"
+msgstr ""
+
+msgid "Donate"
+msgstr ""
+
+msgid "Auto Internal Links Settings"
+msgstr ""
+
+msgid "Configure options for automatically adding internal links."
+msgstr ""
+
+msgid "Refresh Data"
+msgstr ""
+
+msgid "The statistics table lists the Titles (Keywords) that have been automatically linked to other posts. The data is cached, please click \"Refresh Data\" if you have just written a new post."
+msgstr ""
+
+msgid "Title / Keyword (Linked)"
+msgstr ""
+
+msgid "Number of linked posts"
+msgstr ""
+
+msgid "No internal link statistics data available yet."
+msgstr ""
+
+msgid "links"
+msgstr ""
+
+msgid "Posts containing the keyword:"
+msgstr ""
+
+msgid "Post Title (Where link is placed)"
+msgstr ""
+
+msgid "Action"
+msgstr ""
+
+msgid "Automatically find keywords matching post titles and add internal links."
+msgstr ""
