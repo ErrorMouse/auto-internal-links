@@ -41,6 +41,17 @@ class TDPL_Auto_Internal_Links {
 
 		// Register plugin settings
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
+
+		// Đăng ký chu kỳ thời gian cho Cron
+		add_filter( 'cron_schedules', [ $this, 'add_cron_interval' ] );
+		
+		// Đăng ký hook chạy ngầm
+		add_action( 'tdpl_ail_batch_scan_event', [ $this, 'process_batch_scan' ] );
+
+		// Khởi tạo Cron nếu chưa có
+		if ( ! wp_next_scheduled( 'tdpl_ail_batch_scan_event' ) ) {
+			wp_schedule_event( time(), 'tdpl_ail_5_min', 'tdpl_ail_batch_scan_event' );
+		}
 	}	
 
 	/**
@@ -338,19 +349,150 @@ class TDPL_Auto_Internal_Links {
 	 * Runs on admin_init to ensure no output is sent before redirect.
 	 */
 	public function handle_refresh_stats() {
-		// Check if it's the plugin's stats page and there's a refresh request
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_GET['page'], $_GET['refresh_stats'] ) && 'auto-internal-links' === $_GET['page'] && '1' === $_GET['refresh_stats'] ) {
-			
-			// Verify nonce for security
 			if ( ! isset( $_GET['_wpnonce'] ) || ! wp_verify_nonce( sanitize_key( $_GET['_wpnonce'] ), 'refresh_ail_stats' ) ) {
 				wp_die( esc_html__( 'Security check failed. Please refresh the page and try again.', 'auto-internal-links' ) );
 			}
 
-			delete_transient( 'tdpl_auto_links_stats_data' );
+			// Reset tiến trình quét
+			delete_option( 'tdpl_auto_links_stats_data' );
+			delete_option( 'tdpl_ail_temp_stats' );
+			update_option( 'tdpl_ail_scan_offset', 0, false );
+
 			wp_safe_redirect( admin_url( 'admin.php?page=auto-internal-links' ) );
 			exit;
 		}
+	}
+
+	/**
+	 * Tạo mốc thời gian Cron chạy mỗi 5 phút
+	 */
+	public function add_cron_interval( $schedules ) {
+		$schedules['tdpl_ail_5_min'] = [
+			'interval' => 300,
+			'display'  => __( 'Every 5 Minutes', 'auto-internal-links' )
+		];
+		return $schedules;
+	}
+
+	/**
+	 * Tiến trình quét ngầm chạy theo Batch
+	 */
+	public function process_batch_scan() {
+		$batch_size = 150; // Quét 150 bài mỗi 5 phút để tránh timeout (có thể tăng lên nếu server khỏe)
+		$offset     = (int) get_option( 'tdpl_ail_scan_offset', false );
+		
+		// Nếu offset là false, nghĩa là tiến trình quét đang không được kích hoạt
+		if ( $offset === false ) {
+			return; 
+		}
+
+		$temp_stats = get_option( 'tdpl_ail_temp_stats', [] );
+		$options    = get_option( 'tdpl_ail_settings', [] );
+		
+		$post_types     = ! empty( $options['post_types'] ) ? $options['post_types'] : [ 'post' ];
+		$exclude_ids    = ! empty( $options['exclude_posts'] ) ? array_map( 'intval', explode( ',', $options['exclude_posts'] ) ) : [];
+		$case_sensitive = ! empty( $options['case_sensitive'] ) ? true : false;
+		$regex_modifier = $case_sensitive ? 'u' : 'iu';
+
+		// Tái sử dụng hàm lấy keywords từ cache của bạn
+		$keywords = $this->get_post_titles_data();
+		if ( empty( $keywords ) ) {
+			update_option( 'tdpl_ail_scan_offset', false, false ); // Dừng quét
+			return;
+		}
+
+		global $wpdb;
+		$placeholders = implode( ', ', array_fill( 0, count( $post_types ), '%s' ) );
+
+		// Chỉ lấy một lượng bài viết nhất định (LIMIT & OFFSET)
+		$query = $wpdb->prepare(
+			"SELECT ID, post_title, post_content FROM {$wpdb->posts} 
+			 WHERE post_status = 'publish' AND post_type IN ($placeholders) 
+			 ORDER BY ID ASC LIMIT %d OFFSET %d",
+			array_merge( $post_types, [ $batch_size, $offset ] )
+		);
+
+		$posts = $wpdb->get_results( $query );
+
+		// Nếu không còn bài viết nào để lấy -> ĐÃ QUÉT XONG
+		if ( empty( $posts ) ) {
+			// Lọc các keyword không có link
+			$temp_stats = array_filter( $temp_stats, function( $data ) {
+				return count( $data ) > 0;
+			} );
+			
+			// Sắp xếp keyword nhiều link nhất lên đầu
+			uasort( $temp_stats, function( $a, $b ) {
+				return count( $b ) - count( $a );
+			} );
+
+			// Lưu thành dữ liệu chính thức và tắt autoload để không làm nặng web
+			update_option( 'tdpl_auto_links_stats_data', $temp_stats, false );
+			
+			// Dọn dẹp dữ liệu tạm và dừng tiến trình
+			delete_option( 'tdpl_ail_temp_stats' );
+			update_option( 'tdpl_ail_scan_offset', false, false );
+			return;
+		}
+
+		// Xử lý quét các bài viết trong batch (Logic cũ của bạn)
+		foreach ( $posts as $p ) {
+			if ( in_array( (int)$p->ID, $exclude_ids ) ) continue;
+
+			$content = $p->post_content;
+			if ( empty( $content ) ) continue;
+
+			$current_title = trim( $p->post_title );
+			$chunks        = wp_html_split( $content );
+			$linked_urls   = [];
+			$ignore_tags   = [ 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'script', 'style', 'pre', 'code', 'button', 'iframe' ];
+			$is_ignored    = false;
+
+			foreach ( $chunks as $chunk ) {
+				if ( strpos( $chunk, '<' ) === 0 ) {
+					if ( preg_match( '/^<(\/)?([a-zA-Z0-9]+)/', $chunk, $tag_match ) ) {
+						$tag_name   = strtolower( $tag_match[2] );
+						$is_closing = ( $tag_match[1] === '/' );
+						if ( in_array( $tag_name, $ignore_tags, true ) ) {
+							$is_ignored = ! $is_closing;
+						}
+					}
+					continue;
+				}
+
+				if ( $is_ignored ) continue;
+
+				foreach ( $keywords as $title => $url ) {
+					if ( $title === $current_title ) continue;
+					if ( in_array( $url, $linked_urls, true ) ) continue;
+
+					$search_func = $case_sensitive ? 'mb_strpos' : 'mb_stripos';
+					if ( $search_func( $chunk, $title, 0, 'UTF-8' ) !== false ) {
+						$pattern = '/(^|[^\p{L}\p{N}])(' . preg_quote( $title, '/' ) . ')(?=[^\p{L}\p{N}]|$)/' . $regex_modifier;
+						
+						if ( preg_match( $pattern, $chunk ) ) {
+							$linked_urls[] = $url;
+							
+							if ( ! isset( $temp_stats[ $title ] ) ) {
+								$temp_stats[ $title ] = [];
+							}
+
+							$temp_stats[ $title ][] = [
+								'id'        => $p->ID,
+								'title'     => $current_title,
+								'edit_link' => admin_url( 'post.php?post=' . $p->ID . '&action=edit' ),
+								'view_link' => get_permalink( $p->ID )
+							];
+						}
+					}
+				}
+			}
+		}
+
+		// Lưu tiến trình cho lượt chạy tiếp theo
+		update_option( 'tdpl_ail_temp_stats', $temp_stats, false );
+		update_option( 'tdpl_ail_scan_offset', $offset + $batch_size, false );
 	}
 }
 
