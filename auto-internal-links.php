@@ -50,7 +50,7 @@ class TDPL_Auto_Internal_Links {
 
 		// Khởi tạo Cron nếu chưa có
 		if ( ! wp_next_scheduled( 'tdpl_ail_batch_scan_event' ) ) {
-			wp_schedule_event( time(), 'tdpl_ail_5_min', 'tdpl_ail_batch_scan_event' );
+			wp_schedule_event( time(), 'tdpl_ail_1_min', 'tdpl_ail_batch_scan_event' );
 		}
 	}	
 
@@ -267,7 +267,7 @@ class TDPL_Auto_Internal_Links {
 			$sanitized_input['min_title_length'] = absint( $input['min_title_length'] );
 		}
 
-		$sanitized_input['case_sensitive'] = isset( $input['case_sensitive'] ) ? 1 : 0;
+		$sanitized_input['case_sensitive'] = ( ! empty( $input['case_sensitive'] ) ) ? 1 : 0;
 
 		return $sanitized_input;
 	}
@@ -317,7 +317,7 @@ class TDPL_Auto_Internal_Links {
 
 	public function field_case_sensitive_html() {
 		$options = get_option( 'tdpl_ail_settings', [] );
-		$is_checked = isset( $options['case_sensitive'] ) && $options['case_sensitive'];
+		$is_checked = ! empty( $options['case_sensitive'] );
 		?>
 		<label>
 			<input type="checkbox" name="tdpl_ail_settings[case_sensitive]" value="1" <?php checked( $is_checked ); ?> />
@@ -368,9 +368,9 @@ class TDPL_Auto_Internal_Links {
 	 * Tạo mốc thời gian Cron chạy mỗi 5 phút
 	 */
 	public function add_cron_interval( $schedules ) {
-		$schedules['tdpl_ail_5_min'] = [
-			'interval' => 300,
-			'display'  => __( 'Every 5 Minutes', 'auto-internal-links' )
+		$schedules['tdpl_ail_1_min'] = [
+			'interval' => 60,
+			'display'  => __( 'Every 1 Minutes', 'auto-internal-links' )
 		];
 		return $schedules;
 	}
@@ -379,7 +379,7 @@ class TDPL_Auto_Internal_Links {
 	 * Tiến trình quét ngầm chạy theo Batch
 	 */
 	public function process_batch_scan() {
-		$batch_size = 150; // Quét 150 bài mỗi 5 phút để tránh timeout (có thể tăng lên nếu server khỏe)
+		$batch_size = 60; // Quét 60 bài mỗi 60 giây (có thể tăng lên nếu server khỏe)
 		$offset     = (int) get_option( 'tdpl_ail_scan_offset', false );
 		
 		// Nếu offset là false, nghĩa là tiến trình quét đang không được kích hoạt
@@ -498,48 +498,3 @@ class TDPL_Auto_Internal_Links {
 
 // Initialize Plugin
 new TDPL_Auto_Internal_Links();
-
-/* Donate */
-add_action( 'admin_enqueue_scripts', 'auto_link_enqueue_admin_scripts' );
-function auto_link_enqueue_admin_scripts( $hook_suffix ) {
-	
-	$is_plugins_page  = ( 'plugins.php' === $hook_suffix );
-
-	if ( $is_plugins_page ) {
-		$donate_css = "
-            .err-donate-link {
-                font-weight: bold;
-                background: linear-gradient(90deg, #0066ff, #00a1ff, rgb(255, 0, 179), #0066ff);
-                background-size: 200% auto;
-                color: #fff;
-                -webkit-background-clip: text;
-                -moz-background-clip: text;
-                background-clip: text;
-                -webkit-text-fill-color: transparent;
-                animation: alphaGradientText 2s linear infinite;
-            }
-            @keyframes errGradientText {
-                to { background-position: -200% center; }
-            }";
-		wp_add_inline_style( 'wp-admin', $donate_css );
-	}
-}
-function auto_link_donate_link_html() {
-	$donate_url = 'https://err-mouse.id.vn/donate';
-	printf(
-		'<a href="%1$s" target="_blank" rel="noopener noreferrer" class="err-donate-link" aria-label="%2$s"><span>%3$s 🚀</span></a>',
-		esc_url( $donate_url ),
-		esc_attr__( 'Donate to support this plugin', 'auto-internal-links' ), //
-		esc_html__( 'Donate', 'auto-internal-links' ) //
-	);
-}
-
-add_filter( 'plugin_row_meta', 'auto_link_plugin_row_meta', 10, 2 );
-function auto_link_plugin_row_meta( $links, $file ) {
-	if ( plugin_basename( __FILE__ ) === $file ) {
-		ob_start();
-		auto_link_donate_link_html();
-		$links['donate'] = ob_get_clean();
-	}
-	return $links;
-}
