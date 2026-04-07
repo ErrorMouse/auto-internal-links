@@ -77,7 +77,7 @@ class TDPL_Auto_Internal_Links {
 			$min_length = ! empty( $options['min_title_length'] ) ? intval( $options['min_title_length'] ) : 4;
 
 			$posts = get_posts( [
-				'numberposts' => -1, // Get all
+				'numberposts' => -1,
 				'post_type'   => $post_types,
 				'post_status' => 'publish',
 				'exclude'     => $exclude_ids,
@@ -107,7 +107,6 @@ class TDPL_Auto_Internal_Links {
 	 * Handle automatic insertion of links into content
 	 */
 	public function auto_link_content( $content ) {
-		// Only run on detail posts, in the main query and in the loop
 		if ( !is_singular() || !is_main_query() || !in_the_loop() ) {
 			return $content;
 		}
@@ -115,7 +114,6 @@ class TDPL_Auto_Internal_Links {
 		$options = get_option( 'tdpl_ail_settings', [] );
 		$exclude_ids = ! empty( $options['exclude_posts'] ) ? array_map( 'intval', explode( ',', $options['exclude_posts'] ) ) : [];
 		
-		// Do not link excluded posts
 		if ( in_array( get_the_ID(), $exclude_ids ) ) {
 			return $content;
 		}
@@ -125,71 +123,77 @@ class TDPL_Auto_Internal_Links {
 			return $content;
 		}
 
-		// Remove the current post from the list (Don't link itself)
 		$current_title = trim( get_the_title() );
 		if ( isset( $post_titles[ $current_title ] ) ) {
 			unset( $post_titles[ $current_title ] );
 		}
 		
-		// Split HTML into text nodes and HTML tag nodes to avoid incorrectly replacing HTML code
 		$chunks = wp_html_split( $content );
 		
-		$linked_urls = []; // Array to store inserted URLs (to meet the requirement: insert only once)
-		$ignore_tags = [ 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'script', 'style', 'pre', 'code', 'button', 'iframe' ];
-		$is_ignored  = false;
+		$linked_urls  = [];
+		$ignore_tags  = [ 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'script', 'style', 'pre', 'code', 'button', 'iframe' ];
+		$ignore_depth = 0; 
+        
+        // Mảng lưu trữ thẻ HTML tạm thời để tránh Regex quét đè lên HTML
+        $placeholders = [];
+        $p_idx        = 0;
 
 		foreach ( $chunks as &$chunk ) {
-			// If it's an HTML tag
 			if ( strpos( $chunk, '<' ) === 0 ) {
 				if ( preg_match( '/^<(\/)?([a-zA-Z0-9]+)/', $chunk, $tag_match ) ) {
 					$tag_name   = strtolower( $tag_match[2] );
 					$is_closing = ( $tag_match[1] === '/' );
 					
 					if ( in_array( $tag_name, $ignore_tags, true ) ) {
-						// Start ignoring region if it's an opening tag, end if it's a closing tag
-						$is_ignored = ! $is_closing; 
+                        if ( $is_closing ) {
+                            $ignore_depth = max( 0, $ignore_depth - 1 );
+                        } else {
+                            $ignore_depth++;
+                        }
 					}
 				}
 				continue;
 			}
 
-			// If inside a restricted region (like <a>, <h1>...), skip this text chunk
-			if ( $is_ignored ) {
+			if ( $ignore_depth > 0 ) {
 				continue;
 			}
 
-			// If it's a normal text chunk, search for titles
 			foreach ( $post_titles as $title => $url ) {
-				// If this URL has already been linked in the post, skip it (link only once)
 				if ( in_array( $url, $linked_urls, true ) ) {
 					continue;
 				}
 
-				// Check case-sensitive configuration
 				$case_sensitive = ! empty( $options['case_sensitive'] ) ? true : false;
 				$regex_modifier = $case_sensitive ? 'u' : 'iu';
 
-				// Regex: Find exact phrase (Unicode)
-				// Use lookbehind and lookahead to ensure matching the exact word, not joined characters.
-				$pattern = '/(^|[^\p{L}\p{N}])(' . preg_quote( $title, '/' ) . ')(?=[^\p{L}\p{N}]|$)/' . $regex_modifier;
+                $escaped_title = preg_quote( $title, '/' );
+                $escaped_title = preg_replace( '/\s+/', '(?:\s|&nbsp;|\x{00A0}|\x{200B})+', $escaped_title );
 
-				// Overwrite only once in the current chunk
-				$chunk = preg_replace_callback( $pattern, function( $matches ) use ( $url, &$linked_urls ) {
-					// Mark this URL as linked
+				$pattern = '/(^|[^\p{L}\p{N}])(' . $escaped_title . ')(?=[^\p{L}\p{N}]|$)/' . $regex_modifier;
+
+				$chunk = preg_replace_callback( $pattern, function( $matches ) use ( $url, &$linked_urls, &$placeholders, &$p_idx ) {
 					$linked_urls[] = $url;
-					
-					// $matches[1] is the preceding character (punctuation, whitespace...)
-					// $matches[2] is the original title phrase in the post (preserving original case)
-					return $matches[1] . '<a href="' . esc_url( $url ) . '" class="auto-internal-link" title="' . esc_attr( $matches[2] ) . '">' . $matches[2] . '</a>';
-
+                    
+                    // Tạo mã placeholder (VD: ###AIL_PH_0###)
+                    $ph_key = '###AIL_PH_' . $p_idx . '###';
+                    $p_idx++;
+                    
+                    // Lưu thẻ HTML thực tế vào mảng $placeholders
+                    $placeholders[$ph_key] = '<a href="' . esc_url( $url ) . '" class="auto-internal-link" title="' . esc_attr( wp_strip_all_tags( $matches[2] ) ) . '">' . $matches[2] . '</a>';
+                    
+                    // Trả về ký tự đằng trước (dấu câu/khoảng trắng) + mã placeholder
+					return $matches[1] . $ph_key;
 				}, $chunk, 1, $count );
-                
-                // If regex worked and linked, $linked_urls array has been appended inside callback,
-                // we will continue searching for other titles.
 			}
+            
+            // Sau khi duyệt xong tất cả từ khóa, trả các mã placeholder về lại thành chuỗi HTML an toàn
+            if ( ! empty( $placeholders ) ) {
+                $chunk = strtr( $chunk, $placeholders );
+                $placeholders = [];
+            }
 		}
 
-		// Reassemble into complete HTML content
 		return implode( '', $chunks );
 	}
 
@@ -206,13 +210,12 @@ class TDPL_Auto_Internal_Links {
             'dashicons-admin-links'
         );
 
-        // Add "Statistics" menu and use the parent menu's slug to make it the main page, replacing the default menu.
         add_submenu_page(
             'auto-internal-links',
             __( 'Statistics', 'auto-internal-links' ),
             __( 'Statistics', 'auto-internal-links' ),
             'manage_options',
-            'auto-internal-links', // Dùng lại slug của menu cha
+            'auto-internal-links',
             [ $this, 'admin_statistics_page' ]
         );
 
@@ -221,7 +224,7 @@ class TDPL_Auto_Internal_Links {
             __( 'Settings', 'auto-internal-links' ),
             __( 'Settings', 'auto-internal-links' ),
             'manage_options',
-            'auto-internal-links-settings', // Slug mới cho trang cài đặt
+            'auto-internal-links-settings',
             [ $this, 'admin_settings_page' ]
         );
     }
@@ -240,7 +243,7 @@ class TDPL_Auto_Internal_Links {
 			'tdpl_ail_general_section',
 			__( 'General Settings', 'auto-internal-links' ),
 			null,
-			'auto-internal-links-settings' // Cập nhật slug tương ứng với menu Cài đặt
+			'auto-internal-links-settings'
 		);
 
 		add_settings_field( 'post_types', __( 'Apply to post types', 'auto-internal-links' ), [ $this, 'field_post_types_html' ], 'auto-internal-links-settings', 'tdpl_ail_general_section' );
@@ -369,7 +372,7 @@ class TDPL_Auto_Internal_Links {
 	 */
 	public function add_cron_interval( $schedules ) {
 		$schedules['tdpl_ail_1_min'] = [
-			'interval' => 60,
+			'interval' => 300,
 			'display'  => __( 'Every 1 Minutes', 'auto-internal-links' )
 		];
 		return $schedules;
@@ -379,10 +382,9 @@ class TDPL_Auto_Internal_Links {
 	 * Tiến trình quét ngầm chạy theo Batch
 	 */
 	public function process_batch_scan() {
-		$batch_size = 60; // Quét 60 bài mỗi 60 giây (có thể tăng lên nếu server khỏe)
+		$batch_size = 60;
 		$offset     = (int) get_option( 'tdpl_ail_scan_offset', false );
 		
-		// Nếu offset là false, nghĩa là tiến trình quét đang không được kích hoạt
 		if ( $offset === false ) {
 			return; 
 		}
@@ -395,17 +397,15 @@ class TDPL_Auto_Internal_Links {
 		$case_sensitive = ! empty( $options['case_sensitive'] ) ? true : false;
 		$regex_modifier = $case_sensitive ? 'u' : 'iu';
 
-		// Tái sử dụng hàm lấy keywords từ cache của bạn
 		$keywords = $this->get_post_titles_data();
 		if ( empty( $keywords ) ) {
-			update_option( 'tdpl_ail_scan_offset', false, false ); // Dừng quét
+			update_option( 'tdpl_ail_scan_offset', false, false );
 			return;
 		}
 
 		global $wpdb;
 		$placeholders = implode( ', ', array_fill( 0, count( $post_types ), '%s' ) );
 
-		// Chỉ lấy một lượng bài viết nhất định (LIMIT & OFFSET)
 		$query = $wpdb->prepare(
 			"SELECT ID, post_title, post_content FROM {$wpdb->posts} 
 			 WHERE post_status = 'publish' AND post_type IN ($placeholders) 
@@ -415,28 +415,21 @@ class TDPL_Auto_Internal_Links {
 
 		$posts = $wpdb->get_results( $query );
 
-		// Nếu không còn bài viết nào để lấy -> ĐÃ QUÉT XONG
 		if ( empty( $posts ) ) {
-			// Lọc các keyword không có link
 			$temp_stats = array_filter( $temp_stats, function( $data ) {
 				return count( $data ) > 0;
 			} );
 			
-			// Sắp xếp keyword nhiều link nhất lên đầu
 			uasort( $temp_stats, function( $a, $b ) {
 				return count( $b ) - count( $a );
 			} );
 
-			// Lưu thành dữ liệu chính thức và tắt autoload để không làm nặng web
 			update_option( 'tdpl_auto_links_stats_data', $temp_stats, false );
-			
-			// Dọn dẹp dữ liệu tạm và dừng tiến trình
 			delete_option( 'tdpl_ail_temp_stats' );
 			update_option( 'tdpl_ail_scan_offset', false, false );
 			return;
 		}
 
-		// Xử lý quét các bài viết trong batch (Logic cũ của bạn)
 		foreach ( $posts as $p ) {
 			if ( in_array( (int)$p->ID, $exclude_ids ) ) continue;
 
@@ -447,7 +440,7 @@ class TDPL_Auto_Internal_Links {
 			$chunks        = wp_html_split( $content );
 			$linked_urls   = [];
 			$ignore_tags   = [ 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'script', 'style', 'pre', 'code', 'button', 'iframe' ];
-			$is_ignored    = false;
+			$ignore_depth  = 0;
 
 			foreach ( $chunks as $chunk ) {
 				if ( strpos( $chunk, '<' ) === 0 ) {
@@ -455,21 +448,32 @@ class TDPL_Auto_Internal_Links {
 						$tag_name   = strtolower( $tag_match[2] );
 						$is_closing = ( $tag_match[1] === '/' );
 						if ( in_array( $tag_name, $ignore_tags, true ) ) {
-							$is_ignored = ! $is_closing;
+                            if ( $is_closing ) {
+                                $ignore_depth = max( 0, $ignore_depth - 1 );
+                            } else {
+                                $ignore_depth++;
+                            }
 						}
 					}
 					continue;
 				}
 
-				if ( $is_ignored ) continue;
+				if ( $ignore_depth > 0 ) continue;
 
 				foreach ( $keywords as $title => $url ) {
 					if ( $title === $current_title ) continue;
 					if ( in_array( $url, $linked_urls, true ) ) continue;
 
 					$search_func = $case_sensitive ? 'mb_strpos' : 'mb_stripos';
-					if ( $search_func( $chunk, $title, 0, 'UTF-8' ) !== false ) {
-						$pattern = '/(^|[^\p{L}\p{N}])(' . preg_quote( $title, '/' ) . ')(?=[^\p{L}\p{N}]|$)/' . $regex_modifier;
+                    
+                    $clean_chunk = str_replace( ['&nbsp;', '&#160;', "\xC2\xA0"], ' ', $chunk );
+
+					if ( $search_func( $clean_chunk, $title, 0, 'UTF-8' ) !== false ) {
+                        
+                        $escaped_title = preg_quote( $title, '/' );
+                        $escaped_title = preg_replace( '/\s+/', '(?:\s|&nbsp;|\x{00A0}|\x{200B})+', $escaped_title );
+
+						$pattern = '/(^|[^\p{L}\p{N}])(' . $escaped_title . ')(?=[^\p{L}\p{N}]|$)/' . $regex_modifier;
 						
 						if ( preg_match( $pattern, $chunk ) ) {
 							$linked_urls[] = $url;
@@ -490,11 +494,10 @@ class TDPL_Auto_Internal_Links {
 			}
 		}
 
-		// Lưu tiến trình cho lượt chạy tiếp theo
 		update_option( 'tdpl_ail_temp_stats', $temp_stats, false );
 		update_option( 'tdpl_ail_scan_offset', $offset + $batch_size, false );
 	}
+
 }
 
-// Initialize Plugin
 new TDPL_Auto_Internal_Links();
