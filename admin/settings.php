@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     <p><?php esc_html_e( 'Configure options for automatically adding internal links.', 'auto-internal-links' ); ?></p>
     <form method="post" action="options.php">
         <?php
-        settings_fields( 'tdpl_ail_settings_group' );
+        settings_fields( 'auli_ail_settings_group' );
         do_settings_sections( 'auto-internal-links-settings' );
         submit_button();
         ?>

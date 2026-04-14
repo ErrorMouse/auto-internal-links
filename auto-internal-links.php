@@ -18,11 +18,11 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'TDPL_AIL_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'AULI_AIL_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 
-class TDPL_Auto_Internal_Links {
+class AULI_Auto_Internal_Links {
 
-	private $cache_key = 'tdpl_auto_links_cache';
+	private $cache_key = 'auli_auto_links_cache';
 
 	public function __construct() {
 		// Apply content filter
@@ -31,7 +31,7 @@ class TDPL_Auto_Internal_Links {
 		// Clear cache when a post is changed to update the new title list
 		add_action( 'save_post', [ $this, 'clear_cache' ] );
 		add_action( 'deleted_post', [ $this, 'clear_cache' ] );
-		add_action( 'update_option_tdpl_ail_settings', [ $this, 'clear_cache' ] ); // Update cache when saving settings
+		add_action( 'update_option_auli_ail_settings', [ $this, 'clear_cache' ] ); // Update cache when saving settings
 
 		// Add admin menu
 		add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
@@ -46,11 +46,11 @@ class TDPL_Auto_Internal_Links {
 		add_filter( 'cron_schedules', [ $this, 'add_cron_interval' ] );
 		
 		// Đăng ký hook chạy ngầm
-		add_action( 'tdpl_ail_batch_scan_event', [ $this, 'process_batch_scan' ] );
+		add_action( 'auli_ail_batch_scan_event', [ $this, 'process_batch_scan' ] );
 
 		// Khởi tạo Cron nếu chưa có
-		if ( ! wp_next_scheduled( 'tdpl_ail_batch_scan_event' ) ) {
-			wp_schedule_event( time(), 'tdpl_ail_1_min', 'tdpl_ail_batch_scan_event' );
+		if ( ! wp_next_scheduled( 'auli_ail_batch_scan_event' ) ) {
+			wp_schedule_event( time(), 'auli_ail_1_min', 'auli_ail_batch_scan_event' );
 		}
 	}	
 
@@ -59,7 +59,7 @@ class TDPL_Auto_Internal_Links {
 	 */
 	public function clear_cache() {
 		delete_transient( $this->cache_key );
-		delete_transient( 'tdpl_auto_links_stats_data' );
+		delete_transient( 'auli_auto_links_stats_data' );
 	}
 
 	/**
@@ -71,7 +71,7 @@ class TDPL_Auto_Internal_Links {
 		if ( false === $data ) {
 			$data = [];
 			
-			$options = get_option( 'tdpl_ail_settings', [] );
+			$options = get_option( 'auli_ail_settings', [] );
 			$post_types = ! empty( $options['post_types'] ) ? $options['post_types'] : [ 'post' ];
 			$exclude_ids = ! empty( $options['exclude_posts'] ) ? array_map( 'intval', explode( ',', $options['exclude_posts'] ) ) : [];
 			$min_length = ! empty( $options['min_title_length'] ) ? intval( $options['min_title_length'] ) : 4;
@@ -111,7 +111,7 @@ class TDPL_Auto_Internal_Links {
 			return $content;
 		}
 
-		$options = get_option( 'tdpl_ail_settings', [] );
+		$options = get_option( 'auli_ail_settings', [] );
 		$exclude_ids = ! empty( $options['exclude_posts'] ) ? array_map( 'intval', explode( ',', $options['exclude_posts'] ) ) : [];
 		
 		if ( in_array( get_the_ID(), $exclude_ids ) ) {
@@ -234,22 +234,22 @@ class TDPL_Auto_Internal_Links {
 	 */
 	public function register_settings() {
 		register_setting(
-			'tdpl_ail_settings_group',
-			'tdpl_ail_settings',
+			'auli_ail_settings_group',
+			'auli_ail_settings',
 			[ $this, 'sanitize_settings' ]
 		);
 
 		add_settings_section(
-			'tdpl_ail_general_section',
+			'auli_ail_general_section',
 			__( 'General Settings', 'auto-internal-links' ),
 			null,
 			'auto-internal-links-settings'
 		);
 
-		add_settings_field( 'post_types', __( 'Apply to post types', 'auto-internal-links' ), [ $this, 'field_post_types_html' ], 'auto-internal-links-settings', 'tdpl_ail_general_section' );
-		add_settings_field( 'exclude_posts', __( 'Exclude posts (ID)', 'auto-internal-links' ), [ $this, 'field_exclude_posts_html' ], 'auto-internal-links-settings', 'tdpl_ail_general_section' );
-		add_settings_field( 'min_title_length', __( 'Minimum title length', 'auto-internal-links' ), [ $this, 'field_min_title_length_html' ], 'auto-internal-links-settings', 'tdpl_ail_general_section' );
-		add_settings_field( 'case_sensitive', __( 'Case sensitive', 'auto-internal-links' ), [ $this, 'field_case_sensitive_html' ], 'auto-internal-links-settings', 'tdpl_ail_general_section' );
+		add_settings_field( 'post_types', __( 'Apply to post types', 'auto-internal-links' ), [ $this, 'field_post_types_html' ], 'auto-internal-links-settings', 'auli_ail_general_section' );
+		add_settings_field( 'exclude_posts', __( 'Exclude posts (ID)', 'auto-internal-links' ), [ $this, 'field_exclude_posts_html' ], 'auto-internal-links-settings', 'auli_ail_general_section' );
+		add_settings_field( 'min_title_length', __( 'Minimum title length', 'auto-internal-links' ), [ $this, 'field_min_title_length_html' ], 'auto-internal-links-settings', 'auli_ail_general_section' );
+		add_settings_field( 'case_sensitive', __( 'Case sensitive', 'auto-internal-links' ), [ $this, 'field_case_sensitive_html' ], 'auto-internal-links-settings', 'auli_ail_general_section' );
 	}
 
 	/**
@@ -279,7 +279,7 @@ class TDPL_Auto_Internal_Links {
 	 * Render HTML for settings fields
 	 */
 	public function field_post_types_html() {
-		$options             = get_option( 'tdpl_ail_settings', [] );
+		$options             = get_option( 'auli_ail_settings', [] );
 		$selected_post_types = ! empty( $options['post_types'] ) ? $options['post_types'] : [ 'post' ];
 		$post_types          = get_post_types( [ 'public' => true ], 'objects' );
 
@@ -287,7 +287,7 @@ class TDPL_Auto_Internal_Links {
 			$is_checked = in_array( $post_type->name, $selected_post_types, true );
 			?>
 			<label>
-				<input type="checkbox" name="tdpl_ail_settings[post_types][]" value="<?php echo esc_attr( $post_type->name ); ?>" <?php checked( $is_checked ); ?>>
+				<input type="checkbox" name="auli_ail_settings[post_types][]" value="<?php echo esc_attr( $post_type->name ); ?>" <?php checked( $is_checked ); ?>>
 				<?php echo esc_html( $post_type->labels->name ); ?>
 			</label><br>
 			<?php
@@ -295,19 +295,19 @@ class TDPL_Auto_Internal_Links {
 	}
 
 	public function field_exclude_posts_html() {
-		$options = get_option( 'tdpl_ail_settings', [] );
+		$options = get_option( 'auli_ail_settings', [] );
 		$value   = isset( $options['exclude_posts'] ) ? $options['exclude_posts'] : '';
 		?>
-		<input type="text" name="tdpl_ail_settings[exclude_posts]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" />
+		<input type="text" name="auli_ail_settings[exclude_posts]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" />
 		<p class="description"><?php esc_html_e( 'Enter post IDs, separated by commas (e.g., 1, 2, 3).', 'auto-internal-links' ); ?></p>
 		<?php
 	}
 
 	public function field_min_title_length_html() {
-		$options = get_option( 'tdpl_ail_settings', [] );
+		$options = get_option( 'auli_ail_settings', [] );
 		$value   = isset( $options['min_title_length'] ) ? intval( $options['min_title_length'] ) : 4;
 		?>
-		<select name="tdpl_ail_settings[min_title_length]">
+		<select name="auli_ail_settings[min_title_length]">
 			<?php for ( $i = 2; $i <= 10; $i ++ ) : ?>
 				<option value="<?php echo esc_attr( $i ); ?>" <?php selected( $value, $i ); ?>>
 					<?php echo esc_html( $i ); ?> <?php esc_html_e( 'characters', 'auto-internal-links' ); ?>
@@ -319,11 +319,11 @@ class TDPL_Auto_Internal_Links {
 	}
 
 	public function field_case_sensitive_html() {
-		$options = get_option( 'tdpl_ail_settings', [] );
+		$options = get_option( 'auli_ail_settings', [] );
 		$is_checked = ! empty( $options['case_sensitive'] );
 		?>
 		<label>
-			<input type="checkbox" name="tdpl_ail_settings[case_sensitive]" value="1" <?php checked( $is_checked ); ?> />
+			<input type="checkbox" name="auli_ail_settings[case_sensitive]" value="1" <?php checked( $is_checked ); ?> />
 			<?php esc_html_e( 'Enable to only add links when the case exactly matches the title.', 'auto-internal-links' ); ?>
 		</label>
 		<?php
@@ -333,8 +333,8 @@ class TDPL_Auto_Internal_Links {
 	 * Load Statistics View
 	 */
 	public function admin_statistics_page() {
-		if ( file_exists( TDPL_AIL_PLUGIN_DIR . 'admin/statistics.php' ) ) {
-			include_once TDPL_AIL_PLUGIN_DIR . 'admin/statistics.php';
+		if ( file_exists( AULI_AIL_PLUGIN_DIR . 'admin/statistics.php' ) ) {
+			include_once AULI_AIL_PLUGIN_DIR . 'admin/statistics.php';
 		}
 	}
 
@@ -342,8 +342,8 @@ class TDPL_Auto_Internal_Links {
 	 * Load Settings View
 	 */
 	public function admin_settings_page() {
-		if ( file_exists( TDPL_AIL_PLUGIN_DIR . 'admin/settings.php' ) ) {
-			include_once TDPL_AIL_PLUGIN_DIR . 'admin/settings.php';
+		if ( file_exists( AULI_AIL_PLUGIN_DIR . 'admin/settings.php' ) ) {
+			include_once AULI_AIL_PLUGIN_DIR . 'admin/settings.php';
 		}
 	}
 
@@ -358,9 +358,9 @@ class TDPL_Auto_Internal_Links {
 			}
 
 			// Reset tiến trình quét
-			delete_option( 'tdpl_auto_links_stats_data' );
-			delete_option( 'tdpl_ail_temp_stats' );
-			update_option( 'tdpl_ail_scan_offset', 0, false );
+			delete_option( 'auli_auto_links_stats_data' );
+			delete_option( 'auli_ail_temp_stats' );
+			update_option( 'auli_ail_scan_offset', 0, false );
 
 			wp_safe_redirect( admin_url( 'admin.php?page=auto-internal-links' ) );
 			exit;
@@ -371,7 +371,7 @@ class TDPL_Auto_Internal_Links {
 	 * Tạo mốc thời gian Cron chạy mỗi 5 phút
 	 */
 	public function add_cron_interval( $schedules ) {
-		$schedules['tdpl_ail_1_min'] = [
+		$schedules['auli_ail_1_min'] = [
 			'interval' => 300,
 			'display'  => __( 'Every 1 Minutes', 'auto-internal-links' )
 		];
@@ -383,14 +383,14 @@ class TDPL_Auto_Internal_Links {
 	 */
 	public function process_batch_scan() {
 		$batch_size = 60;
-		$offset     = (int) get_option( 'tdpl_ail_scan_offset', false );
+		$offset     = (int) get_option( 'auli_ail_scan_offset', false );
 		
 		if ( $offset === false ) {
 			return; 
 		}
 
-		$temp_stats = get_option( 'tdpl_ail_temp_stats', [] );
-		$options    = get_option( 'tdpl_ail_settings', [] );
+		$temp_stats = get_option( 'auli_ail_temp_stats', [] );
+		$options    = get_option( 'auli_ail_settings', [] );
 		
 		$post_types     = ! empty( $options['post_types'] ) ? $options['post_types'] : [ 'post' ];
 		$exclude_ids    = ! empty( $options['exclude_posts'] ) ? array_map( 'intval', explode( ',', $options['exclude_posts'] ) ) : [];
@@ -399,7 +399,7 @@ class TDPL_Auto_Internal_Links {
 
 		$keywords = $this->get_post_titles_data();
 		if ( empty( $keywords ) ) {
-			update_option( 'tdpl_ail_scan_offset', false, false );
+			update_option( 'auli_ail_scan_offset', false, false );
 			return;
 		}
 
@@ -424,9 +424,9 @@ class TDPL_Auto_Internal_Links {
 				return count( $b ) - count( $a );
 			} );
 
-			update_option( 'tdpl_auto_links_stats_data', $temp_stats, false );
-			delete_option( 'tdpl_ail_temp_stats' );
-			update_option( 'tdpl_ail_scan_offset', false, false );
+			update_option( 'auli_auto_links_stats_data', $temp_stats, false );
+			delete_option( 'auli_ail_temp_stats' );
+			update_option( 'auli_ail_scan_offset', false, false );
 			return;
 		}
 
@@ -494,10 +494,10 @@ class TDPL_Auto_Internal_Links {
 			}
 		}
 
-		update_option( 'tdpl_ail_temp_stats', $temp_stats, false );
-		update_option( 'tdpl_ail_scan_offset', $offset + $batch_size, false );
+		update_option( 'auli_ail_temp_stats', $temp_stats, false );
+		update_option( 'auli_ail_scan_offset', $offset + $batch_size, false );
 	}
 
 }
 
-new TDPL_Auto_Internal_Links();
+new AULI_Auto_Internal_Links();

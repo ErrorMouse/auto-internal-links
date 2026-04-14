@@ -4,10 +4,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Lấy dữ liệu thống kê từ Database (Option)
-$stats_data = get_option( 'tdpl_auto_links_stats_data', [] );
+$stats_data = get_option( 'auli_auto_links_stats_data', [] );
 
 // Kiểm tra xem tiến trình quét ngầm có đang chạy không
-$scan_offset = get_option( 'tdpl_ail_scan_offset', false );
+$scan_offset = get_option( 'auli_ail_scan_offset', false );
 $is_scanning = ( $scan_offset !== false );
 
 ?>
@@ -63,7 +63,7 @@ $is_scanning = ( $scan_offset !== false );
 						<td><strong><?php echo esc_html( $keyword ); ?></strong></td>
 						<td>
 							<a href="javascript:void(0);" 
-								class="tdpl-show-posts-btn button button-small" 
+								class="auli-show-posts-btn button button-small" 
 								data-keyword="<?php echo esc_attr( $keyword ); ?>" 
 								data-posts="<?php echo esc_attr( wp_json_encode( $posts ) ); ?>">
 								<?php 
@@ -82,13 +82,13 @@ $is_scanning = ( $scan_offset !== false );
 	</table>
 </div>
 
-<div id="tdpl-stats-modal" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6);">
+<div id="auli-stats-modal" style="display: none; position: fixed; z-index: 99999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6);">
 	<div style="background-color: #fff; margin: 5% auto; padding: 0; border-radius: 4px; width: 90%; max-width: 800px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
 		<div style="padding: 15px 20px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center;">
-			<h2 style="margin: 0;"><?php esc_html_e( 'Posts containing the keyword:', 'auto-internal-links' ); ?> <span id="tdpl-modal-keyword" style="color: #2271b1;"></span></h2>
-			<span class="tdpl-close-modal" style="font-size: 24px; cursor: pointer; color: #666;">&times;</span>
+			<h2 style="margin: 0;"><?php esc_html_e( 'Posts containing the keyword:', 'auto-internal-links' ); ?> <span id="auli-modal-keyword" style="color: #2271b1;"></span></h2>
+			<span class="auli-close-modal" style="font-size: 24px; cursor: pointer; color: #666;">&times;</span>
 		</div>
-		<div id="tdpl-modal-body" style="padding: 20px; overflow-y: auto;">
+		<div id="auli-modal-body" style="padding: 20px; overflow-y: auto;">
 		</div>
 	</div>
 </div>
@@ -96,7 +96,7 @@ $is_scanning = ( $scan_offset !== false );
 <script>
 jQuery(document).ready(function($) {
 	// Open Popup
-	$('.tdpl-show-posts-btn').on('click', function() {		
+	$('.auli-show-posts-btn').on('click', function() {		
 		var keyword = $(this).data('keyword');
 		var posts = $(this).data('posts');
 		
@@ -109,14 +109,14 @@ jQuery(document).ready(function($) {
 		});
 		html += '</tbody></table>';
 
-		$('#tdpl-modal-keyword').text(keyword);
-		$('#tdpl-modal-body').html(html);
-		$('#tdpl-stats-modal').fadeIn('fast');
+		$('#auli-modal-keyword').text(keyword);
+		$('#auli-modal-body').html(html);
+		$('#auli-stats-modal').fadeIn('fast');
 	});
 
 	// Close Popup
-	$('.tdpl-close-modal').on('click', function() {
-		$('#tdpl-stats-modal').fadeOut('fast');
+	$('.auli-close-modal').on('click', function() {
+		$('#auli-stats-modal').fadeOut('fast');
 	});
 
     <?php if ( $is_scanning ) : ?>
